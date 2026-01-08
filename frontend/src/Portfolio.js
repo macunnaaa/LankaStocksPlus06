@@ -1,32 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Wallet, TrendingUp, Clock, XCircle, PieChart, ArrowUpRight, ArrowDownRight, Repeat, Activity, History, CreditCard } from "lucide-react";
 
 const Portfolio = () => {
     const [portfolio, setPortfolio] = useState(null);
+    
+    // பாப்-அப் விண்டோ ஸ்டேட்ஸ்
+    const [showTradeLog, setShowTradeLog] = useState(false);
+    const [showWalletLog, setShowWalletLog] = useState(false);
 
-    // 1.  (Fetch Portfolio & Pending Orders)
     const fetchPortfolio = () => {
         axios.get('http://127.0.0.1:8000/api/portfolio-details/')
             .then(res => {
                 setPortfolio(res.data);
-                console.log("Live Portfolio Update:", new Date().toLocaleTimeString());
             })
             .catch(err => console.error("Error fetching portfolio:", err));
     };
 
-    // 2.  (Cancel Order)
     const handleCancelOrder = (orderId) => {
-        if (window.confirm("Are you sure you want to cancel this order?")) {
+        if (window.confirm("Are you sure you want to cancel this pending order?")) {
             axios.post('http://127.0.0.1:8000/api/cancel-order/', { order_id: orderId })
                 .then(res => {
                     alert(res.data.message);
-                    fetchPortfolio(); //  Refresh the table after cancellation
+                    fetchPortfolio();
                 })
                 .catch(err => alert("Failed to cancel order"));
         }
     };
 
-    // 3.Auto-refresh logic (10-second interval)
     useEffect(() => {
         fetchPortfolio();
         const interval = setInterval(fetchPortfolio, 10000); 
@@ -35,143 +36,266 @@ const Portfolio = () => {
 
     if (!portfolio) return (
         <div style={styles.loadingContainer}>
-            <h2 style={{ color: '#f0b90b' }}>Connecting to Live Market...</h2>
-            <p style={{ color: '#848e9c' }}>Fetching your S&P SL20 holdings.</p>
+            <div className="animate-spin" style={styles.spinner}></div>
+            <h2 style={{ color: '#00ff7f', marginTop: '20px' }}>Analyzing Portfolio Assets...</h2>
         </div>
     );
+
+    // லாப நஷ்டத்தை கணக்கிடுதல்
+    const totalPnL = portfolio.holdings.reduce((acc, h) => acc + h.pnl, 0);
+    const pnlColor = totalPnL >= 0 ? '#00ff7f' : '#f6465d';
+
+    // அட்வான்ஸ் கிராப் லாஜிக் (Cash vs Stocks Weight)
+    const stockWeight = (portfolio.total_stock_value / portfolio.total_portfolio_value) * 100;
+    const cashWeight = 100 - stockWeight;
 
     return (
         <div style={styles.container}>
             <div style={styles.headerSection}>
-                <h2 style={{ margin: 0, color: '#fff' }}>My Portfolio</h2>
-                <span style={styles.refreshBadge}>Live Refresh: 10s</span>
+                <div>
+                    <h2 style={styles.mainTitle}>Asset Management</h2>
+                    <p style={styles.subTitle}>Live tracking of your CSE holdings and equity</p>
+                </div>
+                <div style={styles.liveStatus}>
+                    <div className="animate-pulse" style={styles.pulseDot}></div>
+                    LIVE SYNC: 10S
+                </div>
+            </div>
+
+            {/* --- ADVANCED ANALYTICS SECTION (Cash vs Stocks Graph) --- */}
+            <div style={styles.analyticsRow}>
+                <div style={styles.mainAnalyticsCard} className="asset-card">
+                    <div style={styles.chartFlex}>
+                        <div style={styles.textData}>
+                            <p style={styles.cardLabel}>Net Portfolio Value</p>
+                            <h1 style={{...styles.heroValue, color: '#f0b90b'}}>LKR {portfolio.total_portfolio_value.toLocaleString()}</h1>
+                            <div style={{display: 'flex', gap: '15px', marginTop: '10px'}}>
+                                <span style={{color: '#00ff7f', fontSize: '11px', fontWeight: 'bold'}}>● STOCKS: {stockWeight.toFixed(1)}%</span>
+                                <span style={{color: '#64748b', fontSize: '11px', fontWeight: 'bold'}}>○ CASH: {cashWeight.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                        <div style={styles.circularGraphContainer}>
+                             <div style={{...styles.circularGraph, background: `conic-gradient(#00ff7f ${stockWeight}%, #1e293b 0)`}}>
+                                <div style={styles.circularInner}>
+                                    <PieChart size={20} color="#f0b90b" />
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+                <div style={{...styles.card, border: `1px solid ${pnlColor}33`, flex: 0.5 }} className="asset-card">
+                    <TrendingUp size={20} color={pnlColor} />
+                    <p style={styles.cardLabel}>Total Net Profit/Loss</p>
+                    <h2 style={{...styles.cardValue, color: pnlColor}}>
+                        {totalPnL >= 0 ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
+                        LKR {Math.abs(totalPnL).toLocaleString()}
+                    </h2>
+                </div>
             </div>
 
             {/* --- BALANCE CARDS --- */}
-            <div style={styles.cardContainer}>
-                <div style={styles.card}>
+            <div style={styles.cardGrid}>
+                <div style={styles.card} className="asset-card">
+                    <Wallet size={20} color="#00ff7f" />
                     <p style={styles.cardLabel}>Available Cash</p>
-                    <h2 style={{ color: '#0ecb81', margin: 0 }}>Rs. {parseFloat(portfolio.balance).toLocaleString()}</h2>
+                    <h2 style={styles.cardValue}>LKR {parseFloat(portfolio.balance).toLocaleString()}</h2>
                 </div>
-                <div style={styles.card}>
-                    <p style={styles.cardLabel}>Total Stock Value</p>
-                    <h2 style={{ color: '#fff', margin: 0 }}>Rs. {portfolio.total_stock_value.toLocaleString()}</h2>
-                </div>
-                <div style={styles.card}>
-                    <p style={styles.cardLabel}>Portfolio Net Value</p>
-                    <h2 style={{ color: '#f0b90b', margin: 0 }}>Rs. {portfolio.total_portfolio_value.toLocaleString()}</h2>
+                <div style={styles.card} className="asset-card">
+                    <PieChart size={20} color="#f0b90b" />
+                    <p style={styles.cardLabel}>Total Equity Value</p>
+                    <h2 style={styles.cardValue}>LKR {portfolio.total_stock_value.toLocaleString()}</h2>
                 </div>
             </div>
 
-            {/* --- CURRENT HOLDINGS TABLE --- */}
-            <div style={styles.sectionHeader}>
-                <h3 style={{ color: '#fff', margin: '0 0 15px 0' }}>Current Holdings</h3>
-            </div>
-            <div style={styles.tableWrapper}>
-                <table style={styles.table}>
-                    <thead>
-                        <tr style={styles.thRow}>
-                            <th style={styles.th}>Symbol</th>
-                            <th style={styles.th}>Qty</th>
-                            <th style={styles.th}>Avg. Price</th>
-                            <th style={styles.th}>Market Price</th>
-                            <th style={styles.th}>TP / SL Status</th>
-                            <th style={styles.th}>PnL (LKR)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {portfolio.holdings.length > 0 ? (
-                            portfolio.holdings.map(h => (
-                                <tr key={h.symbol} style={styles.tr}>
-                                    <td style={styles.td}><strong style={{color: '#f0b90b'}}>{h.symbol}</strong></td>
-                                    <td style={styles.td}>{h.quantity}</td>
-                                    <td style={styles.td}>Rs. {h.avg_price}</td>
-                                    <td style={styles.td}>Rs. {h.current_price}</td>
-                                    <td style={{...styles.td, fontSize: '11px', color: '#848e9c'}}>
-                                        <span style={{color: h.tp ? '#0ecb81' : '#848e9c'}}>TP: {h.tp || '-'}</span> | 
-                                        <span style={{color: h.sl ? '#f6465d' : '#848e9c'}}> SL: {h.sl || '-'}</span>
-                                    </td>
-                                    <td style={{ ...styles.td, color: h.pnl >= 0 ? '#0ecb81' : '#f6465d', fontWeight: 'bold' }}>
-                                        {h.pnl >= 0 ? '+' : ''}{h.pnl.toLocaleString()}
-                                    </td>
+            {/* --- MAIN CONTENT AREA --- */}
+            <div style={styles.contentGrid}>
+                {/* Left Side: Current Holdings */}
+                <div style={styles.leftColumn}>
+                    <div style={styles.sectionTitle}>
+                        <TrendingUp size={16} color="#00ff7f" />
+                        <span>Active Holdings</span>
+                    </div>
+                    <div style={styles.tableBox}>
+                        <table style={styles.table}>
+                            <thead>
+                                <tr style={styles.thRow}>
+                                    <th style={styles.th}>SYMBOL</th>
+                                    <th style={styles.th}>QTY</th>
+                                    <th style={styles.th}>AVG COST</th>
+                                    <th style={styles.th}>MARKET</th>
+                                    <th style={styles.th}>PROFIT/LOSS</th>
                                 </tr>
-                            ))
-                        ) : (
-                            <tr><td colSpan="6" style={styles.emptyTd}>No active holdings found.</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            </thead>
+                            <tbody>
+                                {portfolio.holdings.length > 0 ? (
+                                    portfolio.holdings.map(h => (
+                                        <tr key={h.symbol} style={styles.tr} className="table-row">
+                                            <td style={{...styles.td, color: '#00ff7f', fontWeight: '900'}}>{h.symbol}</td>
+                                            <td style={styles.td}>{h.quantity}</td>
+                                            <td style={styles.td}>{h.avg_price}</td>
+                                            <td style={styles.td}>{h.current_price}</td>
+                                            <td style={{...styles.td, color: h.pnl >= 0 ? '#00ff7f' : '#f6465d', fontWeight: '900'}}>
+                                                {h.pnl >= 0 ? '+' : '-'}{Math.abs(h.pnl).toLocaleString()}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan="5" style={styles.emptyTd}>No assets in your portfolio yet.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-            {/* --- PENDING ORDERS TABLE (BUY/SELL LIMITS) --- */}
-            <div style={{...styles.sectionHeader, marginTop: '40px'}}>
-                <h3 style={{ color: '#fff', margin: '0 0 15px 0' }}>Open Orders (Pending Limits)</h3>
-            </div>
-            <div style={styles.tableWrapper}>
-                <table style={styles.table}>
-                    <thead>
-                        <tr style={styles.thRow}>
-                            <th style={styles.th}>Order Type</th>
-                            <th style={styles.th}>Symbol</th>
-                            <th style={styles.th}>Qty</th>
-                            <th style={styles.th}>Target Price</th>
-                            <th style={styles.th}>Current Market</th>
-                            <th style={styles.th}>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                {/* Right Side: Open Orders & Pop-up Buttons */}
+                <div style={styles.rightColumn}>
+                    <div style={{...styles.sectionTitle, justifyContent: 'space-between'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                            <Clock size={16} color="#f0b90b" />
+                            <span>Open Orders</span>
+                        </div>
+                        <div style={{display: 'flex', gap: '8px'}}>
+                            <button onClick={() => setShowTradeLog(true)} title="Recent Activity" style={styles.logBtn}><History size={14}/></button>
+                            <button onClick={() => setShowWalletLog(true)} title="Wallet History" style={styles.logBtn}><CreditCard size={14}/></button>
+                        </div>
+                    </div>
+                    <div style={styles.orderContainer}>
                         {portfolio.pending_orders && portfolio.pending_orders.length > 0 ? (
                             portfolio.pending_orders.map(order => (
-                                <tr key={order.id} style={styles.tr}>
-                                    <td style={{ ...styles.td }}>
-                                        <span style={{
-                                            color: order.type === 'BUY' ? '#0ecb81' : '#f6465d',
-                                            backgroundColor: order.type === 'BUY' ? 'rgba(14, 203, 129, 0.1)' : 'rgba(246, 70, 93, 0.1)',
-                                            padding: '4px 8px',
-                                            borderRadius: '4px',
-                                            fontSize: '11px',
-                                            fontWeight: 'bold'
-                                        }}>
+                                <div key={order.id} style={styles.orderCard} className="asset-card">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                        <span style={{...styles.orderBadge, color: order.type === 'BUY' ? '#00ff7f' : '#f6465d'}}>
                                             {order.order_type} {order.type}
                                         </span>
-                                    </td>
-                                    <td style={styles.td}>{order.symbol}</td>
-                                    <td style={styles.td}>{order.quantity}</td>
-                                    <td style={{ ...styles.td, color: '#f0b90b', fontWeight: 'bold' }}>Rs. {order.price}</td>
-                                    <td style={styles.td}>Rs. {order.market_price}</td>
-                                    <td style={styles.td}>
-                                        <button onClick={() => handleCancelOrder(order.id)} style={styles.cancelBtn}>Cancel</button>
-                                    </td>
-                                </tr>
+                                        <button onClick={() => handleCancelOrder(order.id)} style={styles.cancelIcon}>
+                                            <XCircle size={18} />
+                                        </button>
+                                    </div>
+                                    <div style={styles.orderDetail}>
+                                        <span style={{fontWeight: '900', color: '#fff'}}>{order.symbol}</span>
+                                        <span style={{color: '#94a3b8'}}>{order.quantity} Shares</span>
+                                    </div>
+                                    <div style={styles.orderPrice}>Target: LKR {order.price}</div>
+                                </div>
                             ))
                         ) : (
-                            <tr><td colSpan="6" style={styles.emptyTd}>No pending limit or stop orders.</td></tr>
+                            <p style={styles.emptyText}>No pending limit orders.</p>
                         )}
-                    </tbody>
-                </table>
+                    </div>
+                </div>
             </div>
+
+            {/* --- RECENT TRANSACTIONS POP-UP (TRADING LOG WITH QUANTITY) --- */}
+            {showTradeLog && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <div style={styles.modalHeader}>
+                            <h3 style={{margin:0, color:'#00ff7f'}}><Repeat size={18} style={{marginRight:8}}/> Trade Execution Log</h3>
+                            <XCircle style={{cursor:'pointer'}} onClick={() => setShowTradeLog(false)} />
+                        </div>
+                        <div style={styles.modalBody}>
+                            <table style={styles.table}>
+                                <thead style={styles.thRow}>
+                                    <tr>
+                                        <th style={styles.th}>DATE</th>
+                                        <th style={styles.th}>TYPE</th>
+                                        <th style={styles.th}>ASSET</th>
+                                        <th style={styles.th}>QTY</th> {/* New Column Added */}
+                                        <th style={styles.th}>EXEC. PRICE</th>
+                                        <th style={styles.th}>STATUS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {portfolio.recent_transactions && portfolio.recent_transactions.map(tx => (
+                                        <tr key={tx.id} style={styles.tr}>
+                                            <td style={styles.td}>{tx.date}</td>
+                                            <td style={{...styles.td, color: tx.type === 'BUY' ? '#00ff7f' : '#f6465d', fontWeight:'bold'}}>{tx.type}</td>
+                                            <td style={styles.td}>{tx.symbol}</td>
+                                            <td style={{...styles.td, fontWeight: 'bold'}}>{tx.quantity}</td> {/* Quantity Shown Here */}
+                                            <td style={styles.td}>LKR {tx.price}</td>
+                                            <td style={styles.td}><span style={{...styles.orderBadge, color:'#00ff7f'}}>{tx.status}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- WALLET ACTIVITY POP-UP (DEPOSIT/WITHDRAW LOG) --- */}
+            {showWalletLog && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <div style={styles.modalHeader}>
+                            <h3 style={{margin:0, color:'#f0b90b'}}><Wallet size={18} style={{marginRight:8}}/> Wallet Transaction History</h3>
+                            <XCircle style={{cursor:'pointer'}} onClick={() => setShowWalletLog(false)} />
+                        </div>
+                        <div style={styles.modalBody}>
+                           <p style={{color:'#64748b', textAlign:'center', padding:40}}>Recent Deposit & Withdrawal history logs are syncing...</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style>
+                {`
+                    .asset-card { transition: all 0.3s ease; }
+                    .asset-card:hover { transform: translateY(-5px); border-color: #00ff7f; box-shadow: 0 10px 20px rgba(0,0,0,0.4); cursor: default; }
+                    .table-row:hover { background-color: rgba(0, 255, 127, 0.05) !important; cursor: pointer; }
+                    @keyframes spin { to { transform: rotate(360deg); } }
+                `}
+            </style>
         </div>
     );
 };
 
-// --- BITGET INSPIRED DARK STYLES ---
+// --- PREMIUM NEON DARK THEME STYLES (WITH MODALS) ---
 const styles = {
-    container: { padding: '30px', backgroundColor: '#0b0e11', minHeight: '100vh', fontFamily: 'Inter, sans-serif' },
-    loadingContainer: { backgroundColor: '#0b0e11', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' },
-    headerSection: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' },
-    refreshBadge: { fontSize: '11px', color: '#848e9c', backgroundColor: '#1e2329', padding: '5px 12px', borderRadius: '4px', border: '1px solid #2b3139' },
-    cardContainer: { display: 'flex', gap: '20px', marginBottom: '30px' },
-    card: { flex: 1, backgroundColor: '#181a20', padding: '25px', borderRadius: '12px', border: '1px solid #2b3139' },
-    cardLabel: { fontSize: '12px', color: '#848e9c', marginBottom: '10px', textTransform: 'uppercase' },
-    sectionHeader: { borderLeft: '4px solid #f0b90b', paddingLeft: '15px' },
-    tableWrapper: { backgroundColor: '#181a20', borderRadius: '12px', border: '1px solid #2b3139', overflow: 'hidden' },
+    container: { padding: '50px 40px', backgroundColor: '#020804', minHeight: '100vh', fontFamily: "'Inter', sans-serif" },
+    loadingContainer: { backgroundColor: '#020804', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' },
+    spinner: { width: '40px', height: '40px', border: '4px solid rgba(0,255,127,0.1)', borderTopColor: '#00ff7f', borderRadius: '50%', animation: 'spin 1s linear infinite' },
+    headerSection: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '40px' },
+    mainTitle: { color: '#fff', fontSize: '32px', fontWeight: '900', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' },
+    subTitle: { color: '#64748b', fontSize: '14px', margin: '5px 0 0 0' },
+    liveStatus: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: 'rgba(0,255,127,0.05)', padding: '8px 15px', borderRadius: '10px', border: '1px solid rgba(0,255,127,0.1)', color: '#00ff7f', fontSize: '11px', fontWeight: '900' },
+    pulseDot: { width: '8px', height: '8px', backgroundColor: '#00ff7f', borderRadius: '50%', boxShadow: '0 0 10px #00ff7f' },
+    analyticsRow: { display: 'flex', gap: '25px', marginBottom: '30px' },
+    mainAnalyticsCard: { flex: 1, backgroundColor: '#0a120b', padding: '30px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' },
+    chartFlex: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+    heroValue: { fontSize: '36px', fontWeight: '900', margin: '10px 0' },
+    circularGraphContainer: { width: '80px', height: '80px' },
+    circularGraph: { width: '100%', height: '100%', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    circularInner: { width: '70%', height: '70%', backgroundColor: '#0a120b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    cardGrid: { display: 'flex', gap: '25px', marginBottom: '50px' },
+    card: { flex: 1, backgroundColor: '#0a120b', padding: '30px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '10px' },
+    cardLabel: { fontSize: '12px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' },
+    cardValue: { fontSize: '24px', color: '#fff', fontWeight: '900', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' },
+    contentGrid: { display: 'flex', gap: '40px' },
+    leftColumn: { flex: 2 },
+    rightColumn: { flex: 1 },
+    sectionTitle: { display: 'flex', alignItems: 'center', gap: '10px', color: '#fff', fontSize: '14px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '20px', letterSpacing: '1px' },
+    tableBox: { backgroundColor: '#0a120b', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' },
     table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left' },
-    thRow: { backgroundColor: '#1e2329' },
-    th: { padding: '15px 20px', color: '#848e9c', fontWeight: '600', fontSize: '13px', borderBottom: '1px solid #2b3139' },
-    tr: { borderBottom: '1px solid #1e2329', transition: '0.3s' },
-    td: { padding: '15px 20px', color: '#eaecef', fontSize: '13px' },
-    emptyTd: { padding: '40px', textAlign: 'center', color: '#848e9c', fontSize: '13px' },
-    cancelBtn: { backgroundColor: 'transparent', border: '1px solid #f6465d', color: '#f6465d', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', transition: '0.3s' }
+    thRow: { backgroundColor: 'rgba(255,255,255,0.02)' },
+    th: { padding: '18px 25px', color: '#64748b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', borderBottom: '1px solid rgba(255,255,255,0.05)' },
+    tr: { borderBottom: '1px solid rgba(255,255,255,0.02)', transition: '0.3s' },
+    td: { padding: '18px 25px', color: '#eaecef', fontSize: '13px' },
+    emptyTd: { padding: '60px', textAlign: 'center', color: '#475569', fontSize: '13px' },
+    orderContainer: { display: 'flex', flexDirection: 'column', gap: '15px' },
+    orderCard: { backgroundColor: '#0a120b', padding: '20px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' },
+    orderBadge: { fontSize: '10px', fontWeight: '900', backgroundColor: 'rgba(255,255,255,0.03)', padding: '4px 10px', borderRadius: '6px' },
+    cancelIcon: { background: 'none', border: 'none', color: '#f6465d', cursor: 'pointer', opacity: 0.6, transition: '0.3s' },
+    orderDetail: { display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '5px' },
+    orderPrice: { fontSize: '11px', color: '#f0b90b', fontWeight: '700' },
+    emptyText: { color: '#475569', fontSize: '13px', textAlign: 'center', padding: '20px' },
+    
+    // பாப்-அப் ஸ்டைல்கள்
+    logBtn: { backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: '0.3s' },
+    modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(8px)' },
+    modalContent: { backgroundColor: '#0a120b', width: '80%', maxHeight: '80%', borderRadius: '24px', border: '1px solid #00ff7f44', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 0 50px rgba(0,255,127,0.1)' },
+    modalHeader: { padding: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+    modalBody: { padding: '20px', overflowY: 'auto', flex: 1 }
 };
 
 export default Portfolio;

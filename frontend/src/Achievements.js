@@ -25,13 +25,17 @@ const Achievements = () => {
             {/* Grid layout for 30 cards */}
             <div style={styles.grid}>
                 {achievements.map(ach => (
-                    <div key={ach.id} style={{
-                        ...styles.card,
-                        opacity: ach.is_unlocked ? 1 : 0.5,
-                        border: ach.is_unlocked ? '1px solid #00ff7f' : '1px solid #1e293b',
-                        boxShadow: ach.is_unlocked ? '0 0 20px rgba(0, 255, 127, 0.15)' : 'none',
-                        background: ach.is_unlocked ? 'rgba(10, 18, 11, 0.9)' : 'rgba(15, 23, 42, 0.4)'
-                    }}>
+                    <div 
+                        key={ach.id} 
+                        className="achievement-card" // CSS class for hover animation
+                        style={{
+                            ...styles.card,
+                            opacity: ach.is_unlocked ? 1 : 0.5,
+                            border: ach.is_unlocked ? '1px solid #00ff7f' : '1px solid #1e293b',
+                            boxShadow: ach.is_unlocked ? '0 0 20px rgba(0, 255, 127, 0.15)' : 'none',
+                            background: ach.is_unlocked ? 'rgba(10, 18, 11, 0.9)' : 'rgba(15, 23, 42, 0.4)'
+                        }}
+                    >
                         <div style={{ 
                             fontSize: '50px', 
                             marginBottom: '15px',
@@ -65,6 +69,25 @@ const Achievements = () => {
                     </div>
                 ))}
             </div>
+
+            {/* CSS for Achievement Card Zoom and Glow Animation */}
+            <style>
+                {`
+                    .achievement-card {
+                        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                    }
+                    .achievement-card:hover {
+                        transform: translateY(-10px) scale(1.05);
+                        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 255, 127, 0.2) !important;
+                        border-color: #00ff7f !important;
+                        z-index: 2;
+                        cursor: pointer;
+                    }
+                    .achievement-card:hover div {
+                        filter: drop-shadow(0 0 15px rgba(0, 255, 127, 0.5)) !important;
+                    }
+                `}
+            </style>
         </div>
     );
 };
@@ -143,7 +166,8 @@ const styles = {
         alignItems: 'center',
         minHeight: '240px',
         cursor: 'default',
-        backdropFilter: 'blur(10px)'
+        backdropFilter: 'blur(10px)',
+        position: 'relative'
     },
     descText: { 
         fontSize: '12px', 

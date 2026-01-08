@@ -282,7 +282,7 @@ def cancel_order(request):
     return Response({"message": "Order cancelled successfully!"})
 
 
-# 4. Portfolio Details
+# 4. Portfolio Details (Updated with Recent Transactions & Fixed Quantity)
 @api_view(['GET'])
 def user_portfolio_details(request):
     try:
@@ -322,7 +322,6 @@ def user_portfolio_details(request):
         )
 
         pending_data = []
-
         for o in pending_orders:
             pending_data.append({
                 "id": o.id,
@@ -334,12 +333,27 @@ def user_portfolio_details(request):
                 "market_price": str(o.stock.current_price)
             })
 
+        # --- இதோ புதிய லாஜிக்: Recent Transactions Log with Quantity Fixed ---
+        recent_transactions = Transaction.objects.filter(user=user).order_by('-timestamp')[:10]
+        recent_data = []
+        for tx in recent_transactions:
+            recent_data.append({
+                "id": tx.id,
+                "date": tx.timestamp.strftime("%Y-%m-%d %H:%M"),
+                "symbol": tx.stock.symbol,
+                "type": tx.transaction_type,
+                "quantity": tx.quantity, # <--- இப்போ இங்கே Quantity வரும்
+                "price": str(tx.price),
+                "status": tx.status
+            })
+
         return Response({
             "balance": str(portfolio.balance),
             "total_stock_value": float(total_stock_value),
             "total_portfolio_value": float(portfolio.balance + total_stock_value),
             "holdings": holdings_data,
-            "pending_orders": pending_data
+            "pending_orders": pending_data,
+            "recent_transactions": recent_data 
         })
 
     except Exception as e:

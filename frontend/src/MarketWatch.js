@@ -12,6 +12,10 @@ const MarketWatch = () => {
     const [tpPrice, setTpPrice] = useState("");
     const [slPrice, setSlPrice] = useState("");
 
+    // பட்டன் ஹோவர் ஸ்டேட்ஸ் (Hover States for Lights)
+    const [buyHover, setBuyHover] = useState(false);
+    const [sellHover, setSellHover] = useState(false);
+
     // 1.  (Fetch Stocks)
     useEffect(() => {
         const fetchStocks = () => {
@@ -76,6 +80,7 @@ const MarketWatch = () => {
                         <div 
                             key={stock.symbol} 
                             onClick={() => handleStockSelect(stock)}
+                            className="stock-item-zoom" // CSS class for zoom effect
                             style={{
                                 ...styles.stockItem, 
                                 backgroundColor: selectedStock?.symbol === stock.symbol ? '#2b3139' : 'transparent'
@@ -173,8 +178,33 @@ const MarketWatch = () => {
                         <span>Rs. {((orderType === 'MARKET' ? selectedStock?.current_price : executionPrice) * quantity).toLocaleString()}</span>
                     </div>
 
-                    <button onClick={() => handleTrade('BUY')} style={styles.buyButton}>Buy {selectedStock?.symbol.split('.')[0]}</button>
-                    <button onClick={() => handleTrade('SELL')} style={styles.sellButton}>Sell {selectedStock?.symbol.split('.')[0]}</button>
+                    {/* BUY Button with Green Light Effect */}
+                    <button 
+                        onMouseEnter={() => setBuyHover(true)}
+                        onMouseLeave={() => setBuyHover(false)}
+                        onClick={() => handleTrade('BUY')} 
+                        style={{
+                            ...styles.buyButton,
+                            boxShadow: buyHover ? '0 0 15px #0ecb81' : 'none',
+                            filter: buyHover ? 'brightness(1.2)' : 'none'
+                        }}
+                    >
+                        Buy {selectedStock?.symbol.split('.')[0]}
+                    </button>
+
+                    {/* SELL Button with Red Light Effect */}
+                    <button 
+                        onMouseEnter={() => setSellHover(true)}
+                        onMouseLeave={() => setSellHover(false)}
+                        onClick={() => handleTrade('SELL')} 
+                        style={{
+                            ...styles.sellButton,
+                            boxShadow: sellHover ? '0 0 15px #f6465d' : 'none',
+                            filter: sellHover ? 'brightness(1.2)' : 'none'
+                        }}
+                    >
+                        Sell {selectedStock?.symbol.split('.')[0]}
+                    </button>
                 </div>
 
                 {/* AI SNIPER ALERT AREA */}
@@ -185,6 +215,21 @@ const MarketWatch = () => {
                     </div>
                 </div>
             </div>
+
+            {/* CSS for Zoom Animation */}
+            <style>
+                {`
+                .stock-item-zoom {
+                    transition: transform 0.2s ease-in-out, background-color 0.2s;
+                }
+                .stock-item-zoom:hover {
+                    transform: scale(1.03);
+                    z-index: 10;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                    background-color: #2b3139 !important;
+                }
+                `}
+            </style>
         </div>
     );
 };
@@ -195,7 +240,7 @@ const styles = {
     leftSidebar: { width: '280px', borderRight: '1px solid #2b3139', display: 'flex', flexDirection: 'column' },
     sidebarHeader: { padding: '15px', fontSize: '14px', fontWeight: '600', color: '#848e9c', borderBottom: '1px solid #2b3139' },
     stockList: { overflowY: 'auto', flex: 1 },
-    stockItem: { display: 'flex', justifyContent: 'space-between', padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid #1e2329', transition: '0.2s' },
+    stockItem: { display: 'flex', justifyContent: 'space-between', padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid #1e2329' },
     symbolInfo: { display: 'flex', flexDirection: 'column' },
     symbolText: { fontSize: '13px', fontWeight: 'bold' },
     companyName: { fontSize: '10px', color: '#848e9c' },
@@ -217,8 +262,8 @@ const styles = {
     input: { backgroundColor: '#2b3139', border: '1px solid #474d57', borderRadius: '4px', padding: '10px', color: '#fff', fontSize: '13px', outline: 'none' },
     smallInput: { backgroundColor: '#1e2329', border: '1px solid #2b3139', borderRadius: '4px', padding: '8px', color: '#fff', fontSize: '12px', width: '100%' },
     totalInfo: { display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '5px 0', color: '#848e9c' },
-    buyButton: { backgroundColor: '#0ecb81', color: '#fff', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' },
-    sellButton: { backgroundColor: '#f6465d', color: '#fff', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' },
+    buyButton: { backgroundColor: '#0ecb81', color: '#fff', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s' },
+    sellButton: { backgroundColor: '#f6465d', color: '#fff', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s' },
     aiAlertSection: { marginTop: 'auto', padding: '12px', backgroundColor: '#1e2329', borderRadius: '6px', border: '1px solid #2b3139' },
     aiMessage: { fontSize: '12px', color: '#eaecef', marginTop: '5px' }
 };
