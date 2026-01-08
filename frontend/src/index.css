@@ -1,0 +1,107 @@
+/* Tailwind-Basic settings */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*  (Fonts) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Space+Grotesk:wght@500;700&display=swap');
+
+/* new Design [cite: 103, 108] */
+:root {
+  --background: 150 30% 4%;
+  --foreground: 0 0% 98%;
+  --primary: 145 100% 50%;
+  --primary-foreground: 150 30% 4%;
+  --border: 150 20% 15%;
+  --radius: 0.75rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  /* latest balck and neon green design [cite: 118, 124] */
+  background-color: #020804 !important;
+  background-image: 
+    radial-gradient(circle at 50% -20%, rgba(0, 255, 127, 0.15), transparent),
+    radial-gradient(circle at 0% 100%, rgba(0, 255, 127, 0.05), transparent) !important;
+  color: #eaecef !important;
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Headlines texts  [cite: 119] */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/*  (Scrollbar) Desgin full - */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #020804;
+}
+::-webkit-scrollbar-thumb {
+  background: #1a2a1a;
+  border-radius: 10px;
+}
+/*  */
+::-webkit-scrollbar-thumb:hover {
+  background: #00ff7f;
+}
+
+/* --- Animations  --- */
+
+/* 1. (Floating Card) [cite: 137] */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-20px) rotate(1deg); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* 2.  (Neon Glow) [cite: 121, 122] */
+.glow-primary {
+  box-shadow: 0 0 40px rgba(0, 255, 127, 0.3), 0 0 80px rgba(0, 255, 127, 0.1);
+}
+
+.glow-border {
+  box-shadow: 0 0 20px rgba(0, 255, 127, 0.2), inset 0 0 10px rgba(0, 255, 127, 0.05);
+}
+
+/* 3. (Slide Up) [cite: 138] */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out forwards;
+}
+
+/* 4.  (Text Gradient) [cite: 120] */
+.text-gradient {
+  background: linear-gradient(to right, #00ff7f, #00cc66);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  @apply bg-clip-text;
+}
+
+/* 5. (Background Grid) [cite: 125, 126] */
+.grid-pattern {
+  background-image: 
+    linear-gradient(rgba(150, 255, 150, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(150, 255, 150, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* 6.  (Glass Card) [cite: 123] */
+.glass-card {
+  background: rgba(10, 20, 12, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 255, 127, 0.1);
+}
