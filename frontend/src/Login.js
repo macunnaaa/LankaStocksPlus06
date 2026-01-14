@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Sparkles } from "lucide-react";
+import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 
 /* ================================
    1. CSE QUIZ COMPONENT
@@ -181,6 +181,23 @@ const Login = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
 
+  // --- 🚀 NEW NOTIFICATION STATE ---
+  const [notification, setNotification] = useState({ show: false, msg: "", type: "" });
+
+  //  useEffect )
+  useEffect(() => {
+    if (notification.show) {
+      const timer = setTimeout(() => {
+        setNotification({ show: false, msg: "", type: "" });
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification.show]);
+
+  const triggerNotify = (msg, type) => {
+    setNotification({ show: true, msg, type });
+  };
+
   const toggleForm = () => {
     setIsLogin(!isLogin);
     setUsername('');
@@ -199,7 +216,8 @@ const Login = ({ onLogin }) => {
         );
 
         if (response.status === 200) {
-          onLogin();
+          triggerNotify("Login Successful! Redirecting...", "success");
+          setTimeout(() => onLogin(), 1000);
         }
       } else {
         const response = await axios.post(
@@ -208,14 +226,15 @@ const Login = ({ onLogin }) => {
         );
 
         if (response.status === 201) {
-          setShowQuiz(true);
+          triggerNotify("Registration Successful! Start Quiz.", "success");
+          setTimeout(() => setShowQuiz(true), 1500);
         }
       }
     } catch (err) {
       const errorMsg =
         err.response?.data?.error ||
         "Connection Error! Please try again.";
-      alert(errorMsg);
+      triggerNotify(errorMsg, "error");
     }
   };
 
@@ -234,7 +253,7 @@ const Login = ({ onLogin }) => {
     brandSubText: {
       fontSize: '16px',
       fontWeight: '700',
-      color: '#f0b90b', // UPDATED COLOR FOR PLUS+ AS REQUESTED
+      color: '#f0b90b',
       letterSpacing: '3px',
       textShadow: '0 0 10px rgba(240, 185, 11, 0.3)'
     }
@@ -252,7 +271,26 @@ const Login = ({ onLogin }) => {
 
   return (
     <div style={styles.container}>
-      {/* ENHANCED GLOWING BACKGROUND ELEMENTS */}
+
+      {/*  globalStyles  */}
+      <style>{`
+        @keyframes slideDown {
+          from { opacity: 0; transform: translate(-50%, -20px); }
+          to { opacity: 1; transform: translate(-50%, 0); }
+        }
+      `}</style>
+
+      {/* --- 🔔 LATEST NOTIFICATION UI --- */}
+      {notification.show && (
+        <div style={{
+          ...styles.notifyOverlay,
+          backgroundColor: notification.type === "success" ? "#00ff7f" : "#ef4444"
+        }}>
+          {notification.type === "success" ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+          <span style={{ fontWeight: '700', fontSize: '14px' }}>{notification.msg}</span>
+        </div>
+      )}
+
       <div style={styles.glowBg1} />
       <div style={styles.glowBg2} />
       
@@ -335,6 +373,21 @@ const styles = {
     fontFamily: 'Inter, sans-serif',
     position: 'relative',
     overflow: 'hidden'
+  },
+  notifyOverlay: {
+    position: 'fixed',
+    top: '30px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    padding: '12px 24px',
+    borderRadius: '12px',
+    color: '#020617',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    zIndex: 9999,
+    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+    animation: 'slideDown 0.4s ease-out forwards'
   },
   glowBg1: {
     position: 'absolute',

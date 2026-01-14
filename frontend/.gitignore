@@ -30,3 +30,22 @@ db.sqlite3
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# --- கூடுதல் பாதுகாப்பு (Datasets & Large Files) ---
+# Datasets (தரவுத்தொகுப்புகள் Git-ல் பதிவேற்றக் கூடாது)
+*.csv
+*.xlsx
+*.json
+/data/
+/datasets/
+
+# AI Models (பெரிய கோப்புகள்)
+*.h5
+*.pkl
+*.model
+*.pt
+*.onnx
+
+# Media & Static
+/media/
+/static/collected/

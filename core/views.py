@@ -4,11 +4,12 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
-from .models import Stock, Portfolio, Holding, Transaction
+from .models import Stock, Portfolio, Holding, Transaction, BotPortfolio, BotLog, BotHolding, NewsAlert
 from .serializers import StockSerializer, PortfolioSerializer
 from decimal import Decimal
 from datetime import datetime, time
 import pytz
+import json
 
 
 # 1. Stocks and Portfolio Management ViewSets
@@ -139,7 +140,7 @@ def place_trade(request):
 
     if is_weekend or not is_market_open:
         return Response(
-            {"error": "Market Closed. Mon-Fri, 9:30 AM to 2:30 PM."},
+            {"error": "Market Closed. Mon-Fri, 9:30 AM to 6:30 PM."},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -155,18 +156,19 @@ def place_trade(request):
 
     portfolio, _ = Portfolio.objects.get_or_create(user=user)
 
+    # --- PENDING ORDER LOGIC REFINED ---
     is_pending = False
 
     if order_type == 'LIMIT':
         if trade_type == 'BUY' and target_price < curr_price:
             is_pending = True
-        if trade_type == 'SELL' and target_price > curr_price:
+        elif trade_type == 'SELL' and target_price > curr_price:
             is_pending = True
 
     elif order_type == 'STOP':
         if trade_type == 'BUY' and target_price > curr_price:
             is_pending = True
-        if trade_type == 'SELL' and target_price < curr_price:
+        elif trade_type == 'SELL' and target_price < curr_price:
             is_pending = True
 
     if is_pending:
@@ -183,6 +185,7 @@ def place_trade(request):
             "message": f"{order_type} Order Placed at Rs.{target_price} (PENDING)"
         })
 
+    # --- MARKET ORDER EXECUTION ---
     total_value = curr_price * quantity
 
     if trade_type == 'BUY':
@@ -282,7 +285,7 @@ def cancel_order(request):
     return Response({"message": "Order cancelled successfully!"})
 
 
-# 4. Portfolio Details (Updated with Recent Transactions & Fixed Quantity)
+# 4. Portfolio Details (Updated with Sector and Recent Transactions)
 @api_view(['GET'])
 def user_portfolio_details(request):
     try:
@@ -308,6 +311,7 @@ def user_portfolio_details(request):
 
             holdings_data.append({
                 "symbol": h.stock.symbol,
+                "sector": getattr(h.stock, 'sector', 'General'), # <--- இதோ Sector தகவல் இங்கே வரும்
                 "quantity": h.quantity,
                 "avg_price": str(h.average_price),
                 "current_price": str(h.stock.current_price),
@@ -333,7 +337,7 @@ def user_portfolio_details(request):
                 "market_price": str(o.stock.current_price)
             })
 
-        # --- இதோ புதிய லாஜிக்: Recent Transactions Log with Quantity Fixed ---
+        # --- Recent Transactions Log ---
         recent_transactions = Transaction.objects.filter(user=user).order_by('-timestamp')[:10]
         recent_data = []
         for tx in recent_transactions:
@@ -342,7 +346,7 @@ def user_portfolio_details(request):
                 "date": tx.timestamp.strftime("%Y-%m-%d %H:%M"),
                 "symbol": tx.stock.symbol,
                 "type": tx.transaction_type,
-                "quantity": tx.quantity, # <--- இப்போ இங்கே Quantity வரும்
+                "quantity": tx.quantity,
                 "price": str(tx.price),
                 "status": tx.status
             })
@@ -428,3 +432,148 @@ def get_achievements(request):
     ]
 
     return Response({"achievements": achievements_list})
+
+
+# --- 🤖 AI AUTO-TRADING ROBOT CONTROL APIS ---
+
+@api_view(['GET'])
+def get_bot_status(request):
+    """ரோபோட்டின் தற்போதைய இருப்பு, நிலை மற்றும் லாக்குகளை அறிவது"""
+    user = request.user if request.user.is_authenticated else User.objects.first()
+    bot_portfolio, created = BotPortfolio.objects.get_or_create(user=user)
+    
+    logs = BotLog.objects.filter(bot_portfolio=bot_portfolio).order_by('-timestamp')[:15]
+    logs_data = [{"time": l.timestamp.strftime("%H:%M:%S"), "message": l.message, "type": l.log_type} for l in logs]
+    
+    # ரோபோட் வைத்திருக்கும் பங்குகளை எடுக்கிறது
+    bot_holdings = BotHolding.objects.filter(bot_portfolio=bot_portfolio)
+    holdings_data = [{"symbol": h.stock.symbol, "qty": h.quantity, "buy_price": str(h.buy_price)} for h in bot_holdings]
+
+    return Response({
+        "balance": str(bot_portfolio.balance),
+        "is_active": bot_portfolio.is_active,
+        "selected_stocks": json.loads(bot_portfolio.selected_stocks or "[]"),
+        "sl": str(bot_portfolio.stop_loss_percent),
+        "tp": str(bot_portfolio.take_profit_percent),
+        "logs": logs_data,
+        "holdings": holdings_data
+    })
+
+
+@api_view(['POST'])
+def transfer_to_bot(request):
+    """// Get the stocks held by the robot"""
+    user = request.user if request.user.is_authenticated else User.objects.first()
+    amount_str = request.data.get('amount', '0')
+    
+    try:
+        amount = Decimal(str(amount_str))
+    except:
+        return Response({"error": "Invalid amount format"}, status=400)
+
+    portfolio = get_object_or_404(Portfolio, user=user)
+    bot_portfolio, _ = BotPortfolio.objects.get_or_create(user=user)
+
+    if amount <= 0:
+        return Response({"error": "Enter a valid amount"}, status=400)
+
+    if portfolio.balance < amount:
+        return Response({"error": "Insufficient Main Balance!"}, status=400)
+
+    portfolio.balance -= amount
+    bot_portfolio.balance += amount
+    portfolio.save()
+    bot_portfolio.save()
+
+    BotLog.objects.create(bot_portfolio=bot_portfolio, message=f"📥 Deposited Rs. {amount} to Bot Wallet", log_type="INFO")
+    return Response({"message": f"Successfully transferred Rs. {amount} to AI Robot!"})
+
+
+@api_view(['POST'])
+def withdraw_from_bot(request):
+    """// Move money from robot wallet to main wallet"""
+    user = request.user if request.user.is_authenticated else User.objects.first()
+    amount_str = request.data.get('amount', '0')
+    
+    try:
+        amount = Decimal(str(amount_str))
+    except:
+        return Response({"error": "Invalid amount format"}, status=400)
+
+    portfolio = get_object_or_404(Portfolio, user=user)
+    bot_portfolio, _ = BotPortfolio.objects.get_or_create(user=user)
+
+    if amount <= 0:
+        return Response({"error": "Enter a valid amount"}, status=400)
+
+    if bot_portfolio.balance < amount:
+        return Response({"error": "Insufficient Bot Balance!"}, status=400)
+
+    bot_portfolio.balance -= amount
+    portfolio.balance += amount
+    bot_portfolio.save()
+    portfolio.save()
+
+    BotLog.objects.create(bot_portfolio=bot_portfolio, message=f"📤 Withdrawn Rs. {amount} to Main Wallet", log_type="INFO")
+    return Response({"message": f"Successfully withdrawn Rs. {amount} from AI Robot!"})
+
+
+@api_view(['POST'])
+def update_bot_settings(request):
+    """// Update trading stocks and SL/TP for the robot"""
+    user = request.user if request.user.is_authenticated else User.objects.first()
+    bot_portfolio, _ = BotPortfolio.objects.get_or_create(user=user)
+
+    selected_stocks = request.data.get('stocks', [])
+    bot_portfolio.selected_stocks = json.dumps(selected_stocks)
+    bot_portfolio.stop_loss_percent = Decimal(str(request.data.get('sl', 2.0)))
+    bot_portfolio.take_profit_percent = Decimal(str(request.data.get('tp', 5.0)))
+    bot_portfolio.save()
+
+    return Response({"message": "Robot Settings Updated Successfully!"})
+
+
+@api_view(['POST'])
+def toggle_bot(request):
+    """on and off robot""
+    user = request.user if request.user.is_authenticated else User.objects.first()
+    bot_portfolio, _ = BotPortfolio.objects.get_or_create(user=user)
+
+    bot_portfolio.is_active = not bot_portfolio.is_active
+    bot_portfolio.save()
+
+    status_text = "STARTED" if bot_portfolio.is_active else "STOPPED"
+    BotLog.objects.create(bot_portfolio=bot_portfolio, message=f"🤖 AI Robot has been {status_text}", log_type="INFO")
+
+    return Response({
+        "message": f"AI Robot {status_text} successfully!",
+        "is_active": bot_portfolio.is_active
+    })
+
+
+# --- 🔔 NEW AI NEWS ALARM APIS 
+
+@api_view(['GET'])
+def get_news_alerts(request):
+   
+    news = NewsAlert.objects.all().order_by('-timestamp')[:10]
+    news_data = []
+    
+    for n in news:
+        news_data.append({
+            "id": n.id,
+            "title": n.title,
+            "ai_signal": n.ai_signal,
+            "source_link": n.source_link,
+            "timestamp": n.timestamp,
+            "is_read": n.is_read
+        })
+        
+    return Response(news_data)
+
+
+@api_view(['POST'])
+def mark_news_as_read(request):
+    """New alers"""
+    NewsAlert.objects.filter(is_read=False).update(is_read=True)
+    return Response({"status": "All news marked as read"})

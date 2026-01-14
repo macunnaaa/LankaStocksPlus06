@@ -3,7 +3,9 @@ import sys
 import django
 import requests
 import time
+import json
 from decimal import Decimal
+from bs4 import BeautifulSoup
 
 # 1. Django setup
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -13,7 +15,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 django.setup()
 
 #  Imported models (including newly added ones)
-from core.models import Stock, Transaction, Holding, Portfolio
+from core.models import Stock, Transaction, Holding, Portfolio, BotPortfolio, BotHolding, BotLog, NewsAlert
 
 # ---  New Logic 1: Handling pending orders (Limit/Stop)
 def process_pending_orders():
@@ -91,6 +93,144 @@ def check_tp_sl():
             print(f"🚨 {reason} TRIGGERED: {h.stock.symbol} sold at {curr_price}")
             h.delete()
 
+# --- 🤖 New AI Logic: Simple RSI Calculation
+def calculate_rsi(prices, period=14):
+    if len(prices) < period + 1: return 50 # Default Neutral
+    gains = []
+    losses = []
+    for i in range(1, len(prices)):
+        change = float(prices[i] - prices[i-1])
+        gains.append(max(change, 0))
+        losses.append(abs(min(change, 0)))
+    
+    avg_gain = sum(gains[-period:]) / period
+    avg_loss = sum(losses[-period:]) / period
+    if avg_loss == 0: return 100
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+# --- 🤖 New AI Logic: Auto Trading Bot Execution (Updated with Selection Logic)
+def run_auto_trading_bot():
+    """AI Robot Trading Logic using RSI and Selected Stocks"""
+    active_bots = BotPortfolio.objects.filter(is_active=True)
+    if not active_bots.exists(): return
+
+    for bot in active_bots:
+        # User select stocks
+        try:
+            allowed_symbols = json.loads(bot.selected_stocks or "[]")
+        except:
+            allowed_symbols = []
+
+        if not allowed_symbols:
+            continue # ivalid symbol didnt select stocks
+
+        stocks_to_trade = Stock.objects.filter(symbol__in=allowed_symbols)
+
+        for stock in stocks_to_trade:
+            current_price = Decimal(stock.current_price)
+            # RSI Auto trading satergy
+            rsi = calculate_rsi([current_price * Decimal('0.98'), current_price * Decimal('1.02'), current_price])
+
+            # 1. Check Custom Stop Loss / Take Profit for Bot Holdings
+            holding = BotHolding.objects.filter(bot_portfolio=bot, stock=stock).first()
+            if holding:
+                change_pct = ((current_price - holding.buy_price) / holding.buy_price) * 100
+                
+                # user Custom SL/TP 
+                if change_pct <= -bot.stop_loss_percent or change_pct >= bot.take_profit_percent or rsi > 70:
+                    bot.balance += (current_price * holding.quantity)
+                    BotLog.objects.create(
+                        bot_portfolio=bot, 
+                        message=f"🤖 AI SOLD {stock.symbol} at {current_price} (P&L: {change_pct:.2f}%)", 
+                        log_type="SELL"
+                    )
+                    holding.delete()
+                    bot.save()
+            
+            # 2. BUY Logic (RSI < 30  )
+            elif rsi < 30 and bot.balance > (current_price * 1):
+                # robot buy one stocks 
+                qty = 1 
+                total_cost = current_price * qty
+                if bot.balance >= total_cost:
+                    bot.balance -= total_cost
+                    BotHolding.objects.create(bot_portfolio=bot, stock=stock, quantity=qty, buy_price=current_price)
+                    BotLog.objects.create(
+                        bot_portfolio=bot, 
+                        message=f"🤖 AI BOUGHT {qty} of {stock.symbol} at {current_price} (RSI: {rsi:.1f})", 
+                        log_type="BUY"
+                    )
+                    bot.save()
+
+# --- 🔔 New AI Logic: News Scraper & AI Sentiment Analysis (Enhanced for CSE)
+def fetch_cse_news_and_analyze():
+    """Scrape CSE market news and provide AI Buy/Sell alerts"""
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    url = "https://www.lankabusinessonline.com/category/market/"
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # header patten selection
+            articles = soup.find_all(['h3', 'h2'], class_='entry-title')[:10] 
+            
+            if not articles:
+                articles = soup.select('.entry-title a')[:10]
+
+            for item in articles:
+                link_tag = item.find('a') if item.name != 'a' else item
+                if not link_tag: continue
+
+                title = link_tag.text.strip()
+                link = link_tag.get('href')
+                
+                if not title or not link: continue
+
+                # // Save only if the message does not already exist in the database
+                if not NewsAlert.objects.filter(title=title).exists():
+                    # --- AI SENTIMENT ANALYSIS (Keywords) ---
+                    ai_signal = "NEUTRAL"
+                    title_up = title.upper()
+                    
+                    buy_keywords = ["PROFIT", "GROWTH", "DIVIDEND", "RISE", "UP", "SURGE", "BUY", "GAIN", "ACQUIRE", "EXPAND"]
+                    sell_keywords = ["LOSS", "DOWN", "FALL", "DEBT", "CRASH", "SLUMP", "SELL", "DECLINE", "REDUCE"]
+                    
+                    if any(word in title_up for word in buy_keywords):
+                        ai_signal = "BUY"
+                    elif any(word in title_up for word in sell_keywords):
+                        ai_signal = "SELL"
+
+                    #// Find the given stock name (e.g., JKH, ABANS)
+                    found_stock = None
+                    all_symbols = Stock.objects.values_list('symbol', flat=True)
+                    for sym in all_symbols:
+                        clean_sym = sym.split('.')[0] # E.g: ABAN
+                        if clean_sym in title_up:
+                            found_stock = sym
+                            break
+
+                    NewsAlert.objects.create(
+                        title=title,
+                        ai_signal=ai_signal,
+                        source_link=link,
+                        stock_symbol=found_stock,
+                        is_read=False
+                    )
+                    print(f"🔔 NEW AI NEWS: {ai_signal} -> {title[:50]}...")
+                    
+                    # // Find the given stock name (e.g., JKH, ABANS)
+                    if NewsAlert.objects.count() > 20:
+                        oldest = NewsAlert.objects.all().order_by('timestamp').first()
+                        if oldest: oldest.delete()
+                        
+    except Exception as e:
+        print(f"❌ News Scraper Error: {e}")
+
 # --- original Scraper function (modified)
 def force_sync_stocks():
     """Directly load and update all shares from the API into the database"""
@@ -116,8 +256,6 @@ def force_sync_stocks():
                         if s.symbol in api_symbol or api_symbol in s.symbol:
                             s.current_price = float(price)
                             s.save()
-                            # Verify orders once the price has been saved
-                            # Can be called here or once outside the loop
 
                     # 2. Add new shares provided by the API to the database
                     stock, created = Stock.objects.update_or_create(
@@ -128,9 +266,11 @@ def force_sync_stocks():
                         }
                     )
             
-            # Verify orders after all prices have been updateds
+            # Verify orders and run Bot after all prices have been updated
             process_pending_orders()
             check_tp_sl()
+            run_auto_trading_bot() # 🤖 Robot Action
+            fetch_cse_news_and_analyze() # 🔔 News Alarm Action
             
             print(f"Success: {len(api_data)} Stocks processed and Trading Logic Checked!")
         else:
@@ -139,7 +279,7 @@ def force_sync_stocks():
         print(f"Scraper Error: {e}")
 
 if __name__ == "__main__":
-    print("Starting Deep Sync Scraper with Advanced Trading... Waiting for price changes.")
+    print("Starting Deep Sync Scraper with AI Bot & News Alarm... Waiting for changes.")
     while True:
         force_sync_stocks()
         time.sleep(10)

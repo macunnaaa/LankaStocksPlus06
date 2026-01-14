@@ -44,14 +44,14 @@ class Holding(models.Model):
     def __str__(self):
         return f"{self.portfolio.user.username} - {self.stock.symbol} ({self.quantity})"
 
-# 4.    (Transaction History - Updated for Advance Orders)
+# 4. (Transaction History - Updated for Advance Orders)
 class Transaction(models.Model):
     TRANSACTION_TYPES = (
         ('BUY', 'Buy'),
         ('SELL', 'Sell'),
     )
     
-    # New  Order Types (Market, Limit, Stop)
+    # New Order Types (Market, Limit, Stop)
     ORDER_TYPES = (
         ('MARKET', 'Market'),
         ('LIMIT', 'Limit'),
@@ -74,8 +74,65 @@ class Transaction(models.Model):
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='COMPLETED')
     
     quantity = models.IntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2) #  Limit/Stop  system
+    price = models.DecimalField(max_digits=10, decimal_places=2) # Limit/Stop system
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.transaction_type} {self.order_type} - {self.stock.symbol} ({self.status})"
+
+
+# --- 🤖 NEW AI AUTO-TRADING ROBOT MODELS (Added Below) ---
+
+# 5. AI Bot Portfolio 
+class BotPortfolio(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='bot_portfolio')
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    is_active = models.BooleanField(default=False) # Bot ON/OFF switch
+    
+    # Bot Settings
+    stop_loss_percent = models.DecimalField(max_digits=5, decimal_places=2, default=2.00)
+    take_profit_percent = models.DecimalField(max_digits=5, decimal_places=2, default=5.00)
+    max_trades_per_day = models.IntegerField(default=5)
+
+    # --- ADVANCED ROBOT FEATURES 
+    selected_stocks = models.TextField(default="[]") 
+
+    def __str__(self):
+        return f"{self.user.username}'s AI Robot Portfolio"
+
+# 6. AI Bot Holdings 
+class BotHolding(models.Model):
+    bot_portfolio = models.ForeignKey(BotPortfolio, on_delete=models.CASCADE, related_name='bot_holdings')
+    stock = models.ForeignKey(Stock, on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=0)
+    buy_price = models.DecimalField(max_digits=10, decimal_places=2)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Bot - {self.stock.symbol} ({self.quantity})"
+
+# 7. AI Bot Activity Logs 
+class BotLog(models.Model):
+    bot_portfolio = models.ForeignKey(BotPortfolio, on_delete=models.CASCADE)
+    message = models.CharField(max_length=255) # E.g: "RSI is 25, Buying ABAN.N"
+    log_type = models.CharField(max_length=20, default="INFO") # INFO, BUY, SELL, ERROR
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.timestamp}: {self.message}"
+
+
+# --- 🔔 NEW AI NEWS ALARM MODEL 
+
+# 8. AI News Alerts 
+class NewsAlert(models.Model):
+    title = models.CharField(max_length=500)
+    summary = models.TextField(blank=True, null=True)
+    stock_symbol = models.CharField(max_length=20, blank=True, null=True) #
+    ai_signal = models.CharField(max_length=20, default="NEUTRAL") # BUY, SELL, NEUTRAL
+    source_link = models.URLField(max_length=500, blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False) # 
+
+    def __str__(self):
+        return f"{self.ai_signal}: {self.title[:30]}"

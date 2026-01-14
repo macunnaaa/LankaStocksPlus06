@@ -10,7 +10,17 @@ from .views import (
     user_register,
     deposit_funds,
     withdraw_funds,
-    cancel_order
+    cancel_order,
+    # --- 🤖 NEW BOT VIEWS ---
+    get_bot_status,
+    transfer_to_bot,
+    toggle_bot,
+    # --- 🤖 ADVANCED BOT CONTROL ---
+    withdraw_from_bot,
+    update_bot_settings,
+    # --- 🔔 NEW NEWS ALARM VIEWS ---
+    get_news_alerts,
+    mark_news_as_read
 )
 
 router = DefaultRouter()
@@ -36,4 +46,17 @@ urlpatterns = [
 
     #  Option to cancel an order
     path('cancel-order/', cancel_order),
+
+    # --- 🤖 AI BOT ROUTES ---
+    path('bot-status/', get_bot_status),
+    path('transfer-to-bot/', transfer_to_bot),
+    path('toggle-bot/', toggle_bot),
+    
+    # --- 🤖 ADVANCED BOT ROUTES ---
+    path('bot-withdraw/', withdraw_from_bot),
+    path('update-bot-settings/', update_bot_settings),
+
+    # --- 🔔 AI NEWS ALARM ROUTES (Added Below) ---
+    path('news-alerts/', get_news_alerts),
+    path('mark-news-read/', mark_news_as_read),
 ]
