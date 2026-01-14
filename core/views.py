@@ -535,7 +535,7 @@ def update_bot_settings(request):
 
 @api_view(['POST'])
 def toggle_bot(request):
-    """on and off robot""
+    """ON OFF ROBOT"""
     user = request.user if request.user.is_authenticated else User.objects.first()
     bot_portfolio, _ = BotPortfolio.objects.get_or_create(user=user)
 
@@ -551,11 +551,12 @@ def toggle_bot(request):
     })
 
 
-# --- 🔔 NEW AI NEWS ALARM APIS 
+# --- 🔔 NEW AI NEWS ALARM APIS
 
 @api_view(['GET'])
 def get_news_alerts(request):
-   
+    
+    # NEWS
     news = NewsAlert.objects.all().order_by('-timestamp')[:10]
     news_data = []
     
@@ -574,6 +575,6 @@ def get_news_alerts(request):
 
 @api_view(['POST'])
 def mark_news_as_read(request):
-    """New alers"""
+    """News alerts"""
     NewsAlert.objects.filter(is_read=False).update(is_read=True)
     return Response({"status": "All news marked as read"})
