@@ -434,18 +434,18 @@ def get_achievements(request):
     return Response({"achievements": achievements_list})
 
 
-# --- 🤖 AI AUTO-TRADING ROBOT CONTROL APIS ---
+# ---  AI AUTO-TRADING ROBOT CONTROL APIS ---
 
 @api_view(['GET'])
 def get_bot_status(request):
-    """ரோபோட்டின் தற்போதைய இருப்பு, நிலை மற்றும் லாக்குகளை அறிவது"""
+    """robot condition stocks buy sell"""
     user = request.user if request.user.is_authenticated else User.objects.first()
     bot_portfolio, created = BotPortfolio.objects.get_or_create(user=user)
     
     logs = BotLog.objects.filter(bot_portfolio=bot_portfolio).order_by('-timestamp')[:15]
     logs_data = [{"time": l.timestamp.strftime("%H:%M:%S"), "message": l.message, "type": l.log_type} for l in logs]
     
-    # ரோபோட் வைத்திருக்கும் பங்குகளை எடுக்கிறது
+    # Robot buy stocks
     bot_holdings = BotHolding.objects.filter(bot_portfolio=bot_portfolio)
     holdings_data = [{"symbol": h.stock.symbol, "qty": h.quantity, "buy_price": str(h.buy_price)} for h in bot_holdings]
 
@@ -578,3 +578,53 @@ def mark_news_as_read(request):
     """News alerts"""
     NewsAlert.objects.filter(is_read=False).update(is_read=True)
     return Response({"status": "All news marked as read"})
+
+
+# --- 🚀 NEW: UPDATE TP/SL FOR ACTIVE HOLDINGS ---
+@api_view(['POST'])
+def update_targets(request):
+    user = request.user if request.user.is_authenticated else User.objects.first()
+    symbol = request.data.get('symbol')
+    tp_price = request.data.get('tp_price')
+    sl_price = request.data.get('sl_price')
+
+    # serching stocks
+    holding = get_object_or_404(
+        Holding, 
+        portfolio__user=user, 
+        stock__symbol=symbol
+    )
+
+    # update price
+    try:
+        holding.target_price = Decimal(str(tp_price)) if tp_price else None
+        holding.stoploss_price = Decimal(str(sl_price)) if sl_price else None
+        holding.save()
+        return Response({"message": f"Targets for {symbol} updated successfully!"})
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# --- 🚀 NEW: UPDATE TP/SL FOR PENDING ORDERS ---
+@api_view(['POST'])
+def update_order_targets(request):
+    user = request.user if request.user.is_authenticated else User.objects.first()
+    order_id = request.data.get('order_id')
+    tp_price = request.data.get('tp_price')
+    sl_price = request.data.get('sl_price')
+
+    # search order pending 
+    order = get_object_or_404(
+        Transaction, 
+        id=order_id, 
+        user=user, 
+        status='PENDING'
+    )
+
+    try:
+        order.tp_price = Decimal(str(tp_price)) if tp_price else None
+        order.sl_price = Decimal(str(sl_price)) if sl_price else None
+        order.save()
+        return Response({"message": "Pending order auto-exit targets updated!"})
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -20,7 +20,11 @@ from .views import (
     update_bot_settings,
     # --- 🔔 NEW NEWS ALARM VIEWS ---
     get_news_alerts,
-    mark_news_as_read
+    mark_news_as_read,
+    # --- 🚀 NEW TARGETS UPDATE VIEW ---
+    update_targets,
+    # --- 🚀 NEW PENDING ORDER TARGETS UPDATE VIEW ---
+    update_order_targets
 )
 
 router = DefaultRouter()
@@ -59,4 +63,10 @@ urlpatterns = [
     # --- 🔔 AI NEWS ALARM ROUTES (Added Below) ---
     path('news-alerts/', get_news_alerts),
     path('mark-news-read/', mark_news_as_read),
+
+    # --- 🚀 NEW TARGETS UPDATE ROUTE (For Adjusting TP/SL) ---
+    path('update-targets/', update_targets),
+
+    # --- 🚀 NEW PENDING ORDER TARGETS UPDATE ROUTE ---
+    path('update-order-targets/', update_order_targets),
 ]

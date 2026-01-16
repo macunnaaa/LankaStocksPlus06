@@ -4,7 +4,7 @@ import MarketWatch from './MarketWatch';
 import Portfolio from './Portfolio';
 import Achievements from './Achievements';
 import Login from './Login';
-import LandingPage from './components/LandingPage'; // './' என்பதற்குப் பதில் './components/' என மாற்றவும்தி
+import LandingPage from './components/LandingPage'; // './'  './components/' 
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);

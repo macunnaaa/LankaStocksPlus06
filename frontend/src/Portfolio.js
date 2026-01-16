@@ -1,26 +1,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Wallet, TrendingUp, Clock, XCircle, PieChart, ArrowUpRight, ArrowDownRight, Repeat, Activity, History, CreditCard, ShieldAlert, ShieldCheck, Zap } from "lucide-react";
+import { Wallet, TrendingUp, Clock, XCircle, PieChart, ArrowUpRight, ArrowDownRight, Repeat, Activity, History, CreditCard, ShieldAlert, ShieldCheck, Zap, AlertCircle, Edit3, Save } from "lucide-react";
 
 const Portfolio = () => {
     const [portfolio, setPortfolio] = useState(null);
     
-    // பாப்-அப் விண்டோ ஸ்டேட்ஸ்
+    // Pop up window
     const [showTradeLog, setShowTradeLog] = useState(false);
     const [showWalletLog, setShowWalletLog] = useState(false);
+
+    // --- NEW NOTIFICATION STATE ---
+    const [statusNotification, setStatusNotification] = useState({ show: false, message: "", type: "" });
 
     // --- PORTFOLIO RISK AI STATES ---
     const [riskAnalysis, setRiskAnalysis] = useState({ status: "Analyzing...", color: "#64748b", advice: "", level: 0 });
 
-    // missing dependency எச்சரிக்கையை தவிர்க்க useCallback பயன்படுத்தப்பட்டுள்ளது
+    // --- TARGET EDIT STATE (Adjust TP/SL) ---
+    const [editTarget, setEditTarget] = useState({ symbol: null, tp: "", sl: "" });
+
+    // // Using useCallback to prevent missing dependency warning
     const fetchPortfolio = useCallback(() => {
         axios.get('http://127.0.0.1:8000/api/portfolio-details/')
             .then(res => {
                 setPortfolio(res.data);
-                runRiskOptimizer(res.data); // AI Risk Analysis-ஐத் தொடங்குகிறது
+                runRiskOptimizer(res.data); // AI Risk Analysis 
             })
             .catch(err => console.error("Error fetching portfolio:", err));
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // --- NEW NOTIFICATION TRIGGER FUNCTION ---
+    const triggerStatusNotify = (msg, type) => {
+        setStatusNotification({ show: true, message: msg, type: type });
+        setTimeout(() => {
+            setStatusNotification({ show: false, message: "", type: "" });
+        }, 3000);
+    };
 
     // --- AI RISK OPTIMIZER LOGIC (Smart Sector Mapping Added) ---
     const runRiskOptimizer = (data) => {
@@ -78,14 +92,27 @@ const Portfolio = () => {
     };
 
     const handleCancelOrder = (orderId) => {
-        if (window.confirm("Are you sure you want to cancel this pending order?")) {
-            axios.post('http://127.0.0.1:8000/api/cancel-order/', { order_id: orderId })
-                .then(res => {
-                    alert(res.data.message);
-                    fetchPortfolio();
-                })
-                .catch(err => alert("Failed to cancel order"));
-        }
+        axios.post('http://127.0.0.1:8000/api/cancel-order/', { order_id: orderId })
+            .then(res => {
+                triggerStatusNotify("Order Cancelled Successfully", "success");
+                fetchPortfolio();
+            })
+            .catch(err => triggerStatusNotify("Failed to cancel order", "error"));
+    };
+
+    // --- UPDATE TP/SL LOGIC (Used for market/pending orders) ---
+    const handleUpdateTargets = (symbol) => {
+        axios.post('http://127.0.0.1:8000/api/update-targets/', { 
+            symbol: symbol, 
+            tp_price: editTarget.tp, 
+            sl_price: editTarget.sl 
+        })
+        .then(res => {
+            triggerStatusNotify(`Auto-Exit Targets updated for ${symbol}`, "success");
+            setEditTarget({ symbol: null, tp: "", sl: "" });
+            fetchPortfolio();
+        })
+        .catch(err => triggerStatusNotify("Failed to update targets", "error"));
     };
 
     useEffect(() => {
@@ -108,6 +135,18 @@ const Portfolio = () => {
 
     return (
         <div style={styles.container}>
+            
+            {/* --- NOTIFICATION POPUP --- */}
+            {statusNotification.show && (
+                <div style={{
+                    ...styles.statusToast,
+                    backgroundColor: statusNotification.type === 'success' ? '#0ecb81' : '#f6465d'
+                }}>
+                    <AlertCircle size={20} />
+                    <span style={{fontWeight:'bold'}}>{statusNotification.message}</span>
+                </div>
+            )}
+
             <div style={styles.headerSection}>
                 <div>
                     <h2 style={styles.mainTitle}>Asset Management</h2>
@@ -119,7 +158,7 @@ const Portfolio = () => {
                 </div>
             </div>
 
-            {/* --- AI RISK OPTIMIZER NOTIFICATION BAR --- */}
+            {/* --- AI RISK ANALYSIS BAR --- */}
             <div style={{...styles.aiRiskBar, borderLeft: `5px solid ${riskAnalysis.color}`}}>
                 <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
                     {riskAnalysis.level === 3 ? <ShieldAlert color={riskAnalysis.color} /> : <ShieldCheck color={riskAnalysis.color} />}
@@ -134,7 +173,7 @@ const Portfolio = () => {
                 <p style={{margin:0, fontSize:'12px', color:'#eaecef', flex: 1, marginLeft:'20px'}}>{riskAnalysis.advice}</p>
             </div>
 
-            {/* --- 🚀 UPGRADED PORTFOLIO HERO SECTION --- */}
+            {/* --- PORTFOLIO DATA HERO --- */}
             <div style={styles.analyticsRow}>
                 <div style={styles.mainAnalyticsCard} className="portfolio-hero-card">
                     <div style={styles.chartFlex}>
@@ -170,7 +209,6 @@ const Portfolio = () => {
                 </div>
             </div>
 
-            {/* --- BALANCE CARDS --- */}
             <div style={styles.cardGrid}>
                 <div style={styles.card} className="asset-card">
                     <div style={styles.cardIconBox}><Wallet size={20} color="#00ff7f" /></div>
@@ -184,12 +222,12 @@ const Portfolio = () => {
                 </div>
             </div>
 
-            {/* --- MAIN CONTENT AREA --- */}
+            {/* --- MAIN HOLDINGS TABLE --- */}
             <div style={styles.contentGrid}>
                 <div style={styles.leftColumn}>
                     <div style={styles.sectionTitle}>
                         <TrendingUp size={16} color="#00ff7f" />
-                        <span>Active Holdings Portfolio</span>
+                        <span>Active Holdings Portfolio (Live Markets)</span>
                     </div>
                     <div style={styles.tableBox}>
                         <table style={styles.table}>
@@ -197,9 +235,9 @@ const Portfolio = () => {
                                 <tr style={styles.thRow}>
                                     <th style={styles.th}>SYMBOL</th>
                                     <th style={styles.th}>QTY</th>
-                                    <th style={styles.th}>AVG COST</th>
-                                    <th style={styles.th}>MARKET</th>
+                                    <th style={styles.th}>COST/MARKET</th>
                                     <th style={styles.th}>PROFIT/LOSS</th>
+                                    <th style={styles.th}>ADJUST (TP / SL)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -210,13 +248,45 @@ const Portfolio = () => {
                                                 <div style={styles.symbolCell}>{h.symbol}</div>
                                             </td>
                                             <td style={styles.td}>{h.quantity}</td>
-                                            <td style={styles.td}>{h.avg_price}</td>
-                                            <td style={styles.td}>{h.current_price}</td>
+                                            <td style={styles.td}>
+                                                <div style={{fontSize:'12px', color:'#64748b'}}>Avg: {h.avg_price}</div>
+                                                <div style={{fontWeight:'bold', color:'#0ecb81'}}>Now: {h.current_price}</div>
+                                            </td>
                                             <td style={{...styles.td, color: h.pnl >= 0 ? '#00ff7f' : '#f6465d', fontWeight: '900'}}>
                                                 <div style={{display:'flex', alignItems:'center', gap: '5px'}}>
                                                     {h.pnl >= 0 ? <ArrowUpRight size={14}/> : <ArrowDownRight size={14}/>}
                                                     {Math.abs(h.pnl).toLocaleString()}
                                                 </div>
+                                            </td>
+                                            {/* --- ADJUSTABLE TP/SL COLUMN --- */}
+                                            <td style={styles.td}>
+                                                {editTarget.symbol === h.symbol ? (
+                                                    <div style={styles.editTargetBox}>
+                                                        <input 
+                                                            type="number" 
+                                                            placeholder="TP Price" 
+                                                            style={styles.targetInput} 
+                                                            value={editTarget.tp} 
+                                                            onChange={(e) => setEditTarget({...editTarget, tp: e.target.value})} 
+                                                        />
+                                                        <input 
+                                                            type="number" 
+                                                            placeholder="SL Price" 
+                                                            style={styles.targetInput} 
+                                                            value={editTarget.sl} 
+                                                            onChange={(e) => setEditTarget({...editTarget, sl: e.target.value})} 
+                                                        />
+                                                        <button onClick={() => handleUpdateTargets(h.symbol)} style={styles.saveBtn} title="Save Changes">
+                                                            <Save size={14}/>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={styles.targetDisplay} onClick={() => setEditTarget({symbol: h.symbol, tp: h.tp || "", sl: h.sl || ""})}>
+                                                        <div style={{color: h.tp ? '#00ff7f' : '#475569', fontWeight:'700'}}>TP: {h.tp || '--'}</div>
+                                                        <div style={{color: h.sl ? '#f6465d' : '#475569', fontWeight:'700'}}>SL: {h.sl || '--'}</div>
+                                                        <Edit3 size={12} style={styles.editIcon} />
+                                                    </div>
+                                                )}
                                             </td>
                                         </tr>
                                     ))
@@ -273,7 +343,7 @@ const Portfolio = () => {
                 </div>
             </div>
 
-            {/* --- RECENT TRANSACTIONS POP-UP --- */}
+            {/* --- MODAL POPUPS --- */}
             {showTradeLog && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
@@ -311,7 +381,6 @@ const Portfolio = () => {
                 </div>
             )}
 
-            {/* --- WALLET ACTIVITY POP-UP --- */}
             {showWalletLog && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.modalContent}>
@@ -350,14 +419,6 @@ const Portfolio = () => {
                         overflow: hidden;
                     }
 
-                    .pnl-glow-card::after {
-                        content: '';
-                        position: absolute;
-                        top: -50%; left: -50%; width: 200%; height: 200%;
-                        background: radial-gradient(circle, rgba(0,255,127,0.03) 0%, transparent 70%);
-                        pointer-events: none;
-                    }
-
                     .table-row:hover { background-color: rgba(255, 255, 255, 0.02) !important; cursor: pointer; }
                     
                     @keyframes heroGlow {
@@ -367,13 +428,18 @@ const Portfolio = () => {
                     }
                     
                     @keyframes spin { to { transform: rotate(360deg); } }
+
+                    @keyframes slideInPop {
+                        0% { transform: translate(-50%, -150%); opacity: 0; }
+                        100% { transform: translate(-50%, 0); opacity: 1; }
+                    }
                 `}
             </style>
         </div>
     );
 };
 
-// --- PREMIUM NEON DARK THEME STYLES ---
+// --- STYLES ---
 const styles = {
     container: { padding: '50px 40px', backgroundColor: '#020804', minHeight: '100vh', fontFamily: "'Inter', sans-serif" },
     loadingContainer: { backgroundColor: '#020804', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' },
@@ -383,7 +449,7 @@ const styles = {
     subTitle: { color: '#64748b', fontSize: '14px', margin: '5px 0 0 0' },
     liveStatus: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: 'rgba(0,255,127,0.05)', padding: '8px 15px', borderRadius: '10px', border: '1px solid rgba(0,255,127,0.1)', color: '#00ff7f', fontSize: '11px', fontWeight: '900' },
     pulseDot: { width: '8px', height: '8px', backgroundColor: '#00ff7f', borderRadius: '50%', boxShadow: '0 0 10px #00ff7f' },
-    aiRiskBar: { backgroundColor: '#0a120b', padding: '20px 25px', borderRadius: '12px', marginBottom: '30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid rgba(255,255,255,0.05)' },
+    aiRiskBar: { backgroundColor: '#0a120b', padding: '20px 25px', borderRadius: '12px', marginBottom: '30px', display: 'flex', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)' },
     analyticsRow: { display: 'flex', gap: '25px', marginBottom: '30px' },
     mainAnalyticsCard: { flex: 1, backgroundColor: '#0a120b', padding: '35px', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.05)' },
     chartFlex: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
@@ -394,34 +460,43 @@ const styles = {
     circularGraph: { width: '100%', height: '100%', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px rgba(0,0,0,0.5)' },
     circularInner: { width: '75%', height: '75%', backgroundColor: '#0a120b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     cardGrid: { display: 'flex', gap: '25px', marginBottom: '50px' },
-    card: { flex: 1, backgroundColor: '#0a120b', padding: '25px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' },
-    cardIconBox: { width: '35px', height: '35px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' },
-    cardLabel: { fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.8px' },
-    cardValue: { fontSize: '26px', color: '#fff', fontWeight: '900', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' },
+    card: { flex: 1, backgroundColor: '#0a120b', padding: '25px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', gap: '8px' },
+    cardIconBox: { width: '35px', height: '35px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    cardLabel: { fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800' },
+    cardValue: { fontSize: '26px', color: '#fff', fontWeight: '900', margin: 0 },
     contentGrid: { display: 'flex', gap: '40px' },
     leftColumn: { flex: 2 },
     rightColumn: { flex: 1 },
-    sectionTitle: { display: 'flex', alignItems: 'center', gap: '10px', color: '#fff', fontSize: '14px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '20px', letterSpacing: '1px' },
+    sectionTitle: { display: 'flex', alignItems: 'center', gap: '10px', color: '#fff', fontSize: '14px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '20px' },
     tableBox: { backgroundColor: '#0a120b', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.03)', overflow: 'hidden' },
     table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left' },
     thRow: { backgroundColor: 'rgba(255,255,255,0.01)' },
-    th: { padding: '20px 25px', color: '#64748b', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', borderBottom: '1px solid rgba(255,255,255,0.03)' },
+    th: { padding: '20px 25px', color: '#64748b', fontSize: '11px', fontWeight: '800', borderBottom: '1px solid rgba(255,255,255,0.03)' },
     tr: { borderBottom: '1px solid rgba(255,255,255,0.02)', transition: '0.3s' },
     td: { padding: '20px 25px', color: '#eaecef', fontSize: '14px' },
     symbolCell: { padding: '5px 12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'inline-block' },
-    emptyTd: { padding: '60px', textAlign: 'center', color: '#475569', fontSize: '13px' },
+    emptyTd: { padding: '60px', textAlign: 'center', color: '#475569' },
     orderContainer: { display: 'flex', flexDirection: 'column', gap: '15px' },
     orderCard: { backgroundColor: '#0a120b', padding: '20px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.03)' },
     orderBadge: { fontSize: '10px', fontWeight: '900', padding: '4px 10px', borderRadius: '6px', textTransform: 'uppercase' },
-    cancelIcon: { background: 'none', border: 'none', color: '#f6465d', cursor: 'pointer', opacity: 0.6, transition: '0.3s' },
+    cancelIcon: { background: 'none', border: 'none', color: '#f6465d', cursor: 'pointer', opacity: 0.6 },
     orderDetail: { display: 'flex', justifyContent: 'space-between', fontSize: '15px', marginBottom: '5px' },
     orderPrice: { fontSize: '11px', color: '#f0b90b', fontWeight: '700' },
-    emptyText: { color: '#475569', fontSize: '13px', textAlign: 'center', padding: '20px' },
-    logBtn: { backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: '0.2s' },
+    emptyText: { color: '#475569', fontSize: '13px', textAlign: 'center' },
+    logBtn: { backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', padding: '8px', borderRadius: '10px', cursor: 'pointer' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(12px)' },
-    modalContent: { backgroundColor: '#0a120b', width: '85%', maxHeight: '85%', borderRadius: '32px', border: '1px solid rgba(0,255,127,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 0 100px rgba(0,0,0,0.8)' },
+    modalContent: { backgroundColor: '#0a120b', width: '85%', maxHeight: '85%', borderRadius: '32px', border: '1px solid rgba(0,255,127,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
     modalHeader: { padding: '30px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-    modalBody: { padding: '30px', overflowY: 'auto', flex: 1 }
+    modalBody: { padding: '30px', overflowY: 'auto', flex: 1 },
+    statusToast: {
+        position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 10000, padding: '12px 24px', borderRadius: '12px', color: '#fff', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', animation: 'slideInPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+    },
+    // --- NEW EDIT TARGET STYLES ---
+    targetDisplay: { cursor: 'pointer', position: 'relative', padding: '10px', borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', fontSize: '12px', minWidth:'100px' },
+    editIcon: { position: 'absolute', top: 5, right: 5, opacity: 0.4 },
+    editTargetBox: { display: 'flex', flexDirection: 'column', gap: '5px', width: '100px' },
+    targetInput: { backgroundColor: '#020804', border: '1px solid #00ff7f55', borderRadius: '6px', color: '#fff', fontSize: '11px', padding: '4px 8px', outline: 'none' },
+    saveBtn: { backgroundColor: '#00ff7f', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '6px', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: '0.2s', '&:hover': { backgroundColor: '#0ecb81' } }
 };
 
 export default Portfolio;

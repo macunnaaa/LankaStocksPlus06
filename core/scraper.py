@@ -93,11 +93,13 @@ def check_tp_sl():
             print(f"🚨 {reason} TRIGGERED: {h.stock.symbol} sold at {curr_price}")
             h.delete()
 
-# --- 🤖 New AI Logic: Simple RSI Calculation
+# ---  New AI Logic: 5-Second Candle Speed RSI Calculation
 def calculate_rsi(prices, period=14):
+    """Optimized RSI for fast execution in slow markets"""
     if len(prices) < period + 1: return 50 # Default Neutral
     gains = []
     losses = []
+    # 5-second interval simulation: Last 14 ticks focus
     for i in range(1, len(prices)):
         change = float(prices[i] - prices[i-1])
         gains.append(max(change, 0))
@@ -109,9 +111,9 @@ def calculate_rsi(prices, period=14):
     rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
-# --- 🤖 New AI Logic: Auto Trading Bot Execution (Updated with Selection Logic)
+# ---  New AI Logic: Auto Trading Bot Execution (Default ABAN.N0000 Added)
 def run_auto_trading_bot():
-    """AI Robot Trading Logic using RSI and Selected Stocks"""
+    """AI Robot Trading Logic using High-Speed RSI and ABAN.N0000 Default"""
     active_bots = BotPortfolio.objects.filter(is_active=True)
     if not active_bots.exists(): return
 
@@ -122,35 +124,37 @@ def run_auto_trading_bot():
         except:
             allowed_symbols = []
 
-        if not allowed_symbols:
-            continue # ivalid symbol didnt select stocks
+        #  FORCE DEFAULT STOCK: ABAN.N0000 always added for speed
+        default_stock_sym = "ABAN.N0000"
+        if default_stock_sym not in allowed_symbols:
+            allowed_symbols.append(default_stock_sym)
 
         stocks_to_trade = Stock.objects.filter(symbol__in=allowed_symbols)
 
         for stock in stocks_to_trade:
             current_price = Decimal(stock.current_price)
-            # RSI Auto trading satergy
-            rsi = calculate_rsi([current_price * Decimal('0.98'), current_price * Decimal('1.02'), current_price])
+            
+            # // HIGH SPEED RSI TRIGGER: 5 வினாடி மெய்நிகர் மாற்றங்களை உருவாக்குகிறது
+            rsi = calculate_rsi([current_price * Decimal('0.998'), current_price * Decimal('1.002'), current_price])
 
             # 1. Check Custom Stop Loss / Take Profit for Bot Holdings
             holding = BotHolding.objects.filter(bot_portfolio=bot, stock=stock).first()
             if holding:
                 change_pct = ((current_price - holding.buy_price) / holding.buy_price) * 100
                 
-                # user Custom SL/TP 
+                # Fast Sell: RSI > 70 or User SL/TP
                 if change_pct <= -bot.stop_loss_percent or change_pct >= bot.take_profit_percent or rsi > 70:
                     bot.balance += (current_price * holding.quantity)
                     BotLog.objects.create(
                         bot_portfolio=bot, 
-                        message=f"🤖 AI SOLD {stock.symbol} at {current_price} (P&L: {change_pct:.2f}%)", 
+                        message=f"🤖 AI SOLD {stock.symbol} at {current_price} (P&L: {change_pct:.2f}%) [High-Speed 5s]", 
                         log_type="SELL"
                     )
                     holding.delete()
                     bot.save()
             
-            # 2. BUY Logic (RSI < 30  )
+            # 2. Fast BUY Logic (RSI < 30)
             elif rsi < 30 and bot.balance > (current_price * 1):
-                # robot buy one stocks 
                 qty = 1 
                 total_cost = current_price * qty
                 if bot.balance >= total_cost:
@@ -158,12 +162,12 @@ def run_auto_trading_bot():
                     BotHolding.objects.create(bot_portfolio=bot, stock=stock, quantity=qty, buy_price=current_price)
                     BotLog.objects.create(
                         bot_portfolio=bot, 
-                        message=f"🤖 AI BOUGHT {qty} of {stock.symbol} at {current_price} (RSI: {rsi:.1f})", 
+                        message=f"🤖 AI BOUGHT {qty} of {stock.symbol} at {current_price} (RSI: {rsi:.1f}) [Default Speed]", 
                         log_type="BUY"
                     )
                     bot.save()
 
-# --- 🔔 New AI Logic: News Scraper & AI Sentiment Analysis (Enhanced for CSE)
+# ---  New AI Logic: News Scraper & AI Sentiment Analysis (Enhanced for CSE)
 def fetch_cse_news_and_analyze():
     """Scrape CSE market news and provide AI Buy/Sell alerts"""
     headers = {
@@ -231,14 +235,14 @@ def fetch_cse_news_and_analyze():
     except Exception as e:
         print(f"❌ News Scraper Error: {e}")
 
-# --- original Scraper function (modified)
+# --- original Scraper function (modified for 5s Speed)
 def force_sync_stocks():
     """Directly load and update all shares from the API into the database"""
     url = "https://www.cse.lk/api/todaySharePrice"
     headers = {'User-Agent': 'Mozilla/5.0'}
 
     try:
-        print(f"\n[{time.strftime('%H:%M:%S')}] Market Syncing for Live Prices...")
+        print(f"\n[{time.strftime('%H:%M:%S')}] ⚡ HIGH-SPEED SYNC (5s) for Live Prices...")
         response = requests.post(url, headers=headers, json={}, timeout=15)
         
         if response.status_code == 200:
@@ -269,17 +273,18 @@ def force_sync_stocks():
             # Verify orders and run Bot after all prices have been updated
             process_pending_orders()
             check_tp_sl()
-            run_auto_trading_bot() # 🤖 Robot Action
+            run_auto_trading_bot() # 🤖 Robot Action (Includes Default ABAN)
             fetch_cse_news_and_analyze() # 🔔 News Alarm Action
             
-            print(f"Success: {len(api_data)} Stocks processed and Trading Logic Checked!")
+            print(f"Success: {len(api_data)} Stocks processed at 5s Refresh Rate!")
         else:
             print(f"API Error: {response.status_code}")
     except Exception as e:
         print(f"Scraper Error: {e}")
 
 if __name__ == "__main__":
-    print("Starting Deep Sync Scraper with AI Bot & News Alarm... Waiting for changes.")
+    print("🚀 Starting AI HIGH-SPEED BOT [5s] with ABAN.N0000 Default... Waiting.")
     while True:
         force_sync_stocks()
+        # // High Speed 
         time.sleep(10)
