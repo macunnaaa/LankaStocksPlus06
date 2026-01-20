@@ -9,7 +9,7 @@
 # production
 /build
 
-# Python/Django specific (இவை மிக முக்கியம்)
+# Python/Django specific 
 __pycache__/
 *.py[cod]
 *$py.class
@@ -31,15 +31,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# --- கூடுதல் பாதுகாப்பு (Datasets & Large Files) ---
-# Datasets (தரவுத்தொகுப்புகள் Git-ல் பதிவேற்றக் கூடாது)
+# --- (Datasets & Large Files) ---
+# Datasets (dont uploD GIT)
 *.csv
 *.xlsx
 *.json
 /data/
 /datasets/
 
-# AI Models (பெரிய கோப்புகள்)
+# AI Models 
 *.h5
 *.pkl
 *.model
