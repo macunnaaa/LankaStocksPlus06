@@ -134,7 +134,7 @@ def run_auto_trading_bot():
         for stock in stocks_to_trade:
             current_price = Decimal(stock.current_price)
             
-            # // HIGH SPEED RSI TRIGGER: 5 வினாடி மெய்நிகர் மாற்றங்களை உருவாக்குகிறது
+            # // HIGH SPEED RSI TRIGGER: 5 
             rsi = calculate_rsi([current_price * Decimal('0.998'), current_price * Decimal('1.002'), current_price])
 
             # 1. Check Custom Stop Loss / Take Profit for Bot Holdings
