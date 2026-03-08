@@ -90,7 +90,7 @@ def check_tp_sl():
                 order_type='MARKET', quantity=h.quantity, price=curr_price, status='COMPLETED'
             )
             portfolio.save()
-            print(f"🚨 {reason} TRIGGERED: {h.stock.symbol} sold at {curr_price}")
+            print(f" {reason} TRIGGERED: {h.stock.symbol} sold at {curr_price}")
             h.delete()
 
 # ---  New AI Logic: 5-Second Candle Speed RSI Calculation
@@ -233,7 +233,7 @@ def fetch_cse_news_and_analyze():
                         if oldest: oldest.delete()
                         
     except Exception as e:
-        print(f"❌ News Scraper Error: {e}")
+        print(f" News Scraper Error: {e}")
 
 # --- original Scraper function (modified for 5s Speed)
 def force_sync_stocks():
@@ -242,7 +242,7 @@ def force_sync_stocks():
     headers = {'User-Agent': 'Mozilla/5.0'}
 
     try:
-        print(f"\n[{time.strftime('%H:%M:%S')}] ⚡ HIGH-SPEED SYNC (5s) for Live Prices...")
+        print(f"\n[{time.strftime('%H:%M:%S')}]  HIGH-SPEED SYNC (15s) for Live Prices...")
         response = requests.post(url, headers=headers, json={}, timeout=15)
         
         if response.status_code == 200:
@@ -273,8 +273,8 @@ def force_sync_stocks():
             # Verify orders and run Bot after all prices have been updated
             process_pending_orders()
             check_tp_sl()
-            run_auto_trading_bot() # 🤖 Robot Action (Includes Default ABAN)
-            fetch_cse_news_and_analyze() # 🔔 News Alarm Action
+            run_auto_trading_bot() #  Robot Action (Includes Default ABAN)
+            fetch_cse_news_and_analyze() #  News Alarm Action
             
             print(f"Success: {len(api_data)} Stocks processed at 5s Refresh Rate!")
         else:
@@ -283,7 +283,7 @@ def force_sync_stocks():
         print(f"Scraper Error: {e}")
 
 if __name__ == "__main__":
-    print("🚀 Starting AI HIGH-SPEED BOT [5s] with ABAN.N0000 Default... Waiting.")
+    print(" Starting AI HIGH-SPEED BOT [5s] with ABAN.N0000 Default... Waiting.")
     while True:
         force_sync_stocks()
         # // High Speed 

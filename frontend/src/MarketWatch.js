@@ -33,7 +33,7 @@ const MarketWatch = () => {
     const [showOverlay, setShowOverlay] = useState(false);
     const [snipedResult, setSnipedResult] = useState(null); 
 
-    // --- 🤖 AI AUTO-TRADING ROBOT STATES ---
+    // ---  AI AUTO-TRADING ROBOT STATES ---
     const [showBotModal, setShowBotModal] = useState(false);
     const [botData, setBotData] = useState({ balance: 0, is_active: false, logs: [], holdings: [], selected_stocks: [], sl: 2, tp: 5 });
     const [transferAmount, setTransferAmount] = useState("");
@@ -41,12 +41,12 @@ const MarketWatch = () => {
     const [botSL, setBotSL] = useState(2);
     const [botTP, setBotTP] = useState(5);
 
-    // --- 🔔 NEW AI NEWS ALARM STATES ---
+    // ---  NEW AI NEWS ALARM STATES ---
     const [showNewsModal, setShowNewsModal] = useState(false);
     const [newsAlerts, setNewsAlerts] = useState([]);
     const [hasNewAlert, setHasNewAlert] = useState(false);
 
-    // --- 🚀 MODERN NOTIFICATION STATE ---
+    // ---  MODERN NOTIFICATION STATE ---
     const [notification, setNotification] = useState({ show: false, message: "", type: "info" });
 
     const showNotify = (msg, type = "info") => {
@@ -81,7 +81,7 @@ const MarketWatch = () => {
         return () => clearInterval(interval);
     }, [selectedStock]);
 
-    // --- 🔔 FETCH NEWS LOGIC ---
+    // ---  FETCH NEWS LOGIC ---
     useEffect(() => {
         const fetchNews = async () => {
             try {
@@ -102,7 +102,7 @@ const MarketWatch = () => {
         return found ? found.quantity : 0;
     };
 
-    // --- 🤖 AI BOT FUNCTIONS ---
+    // ---  AI BOT FUNCTIONS ---
     const fetchBotStatus = () => {
         axios.get('http://127.0.0.1:8000/api/bot-status/')
             .then(res => {
@@ -186,7 +186,7 @@ const MarketWatch = () => {
         updateBotSettings(newList);
     };
 
-    // --- 🎯 AI SNIPPER TOOL LOGIC ---
+    // ---  AI SNIPPER TOOL LOGIC ---
     const startSniperMode = () => {
         setSnipedResult(null); 
         setShowOverlay(true);
@@ -318,7 +318,7 @@ const MarketWatch = () => {
                 </div>
             )}
 
-            {/* --- 🤖 AI ROBOT MODAL --- */}
+            {/* ---  AI ROBOT MODAL --- */}
             {showBotModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.botModal}>
@@ -409,7 +409,7 @@ const MarketWatch = () => {
                 </div>
             )}
 
-            {/* --- 🔔 NEWS ALARM MODAL --- */}
+            {/* ---  NEWS ALARM MODAL --- */}
             {showNewsModal && (
                 <div style={styles.modalOverlay}>
                     <div style={styles.botModal}>

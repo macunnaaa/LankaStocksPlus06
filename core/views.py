@@ -140,7 +140,7 @@ def place_trade(request):
 
     if is_weekend or not is_market_open:
         return Response(
-            {"error": "Market Closed. Mon-Fri, 9:30 AM to 6:30 PM."},
+            {"error": "Market Closed. Mon-Fri, 9:30 AM to 14:30 PM."},
             status=status.HTTP_400_BAD_REQUEST
         )
 

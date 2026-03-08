@@ -181,7 +181,7 @@ const Login = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
 
-  // --- 🚀 NEW NOTIFICATION STATE ---
+  // ---  NEW NOTIFICATION STATE ---
   const [notification, setNotification] = useState({ show: false, msg: "", type: "" });
 
   //  useEffect )
@@ -317,7 +317,7 @@ const Login = ({ onLogin }) => {
             {!isLogin && (
               <input
                 type="text"
-                placeholder="Full Name"
+                placeholder=" Email"
                 style={styles.input}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}

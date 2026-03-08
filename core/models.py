@@ -81,7 +81,7 @@ class Transaction(models.Model):
         return f"{self.transaction_type} {self.order_type} - {self.stock.symbol} ({self.status})"
 
 
-# --- 🤖 NEW AI AUTO-TRADING ROBOT MODELS (Added Below) ---
+# ---  NEW AI AUTO-TRADING ROBOT MODELS (Added Below) ---
 
 # 5. AI Bot Portfolio 
 class BotPortfolio(models.Model):
@@ -122,7 +122,7 @@ class BotLog(models.Model):
         return f"{self.timestamp}: {self.message}"
 
 
-# --- 🔔 NEW AI NEWS ALARM MODEL 
+# ---  NEW AI NEWS ALARM MODEL 
 
 # 8. AI News Alerts 
 class NewsAlert(models.Model):

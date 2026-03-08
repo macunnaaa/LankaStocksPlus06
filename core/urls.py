@@ -21,9 +21,9 @@ from .views import (
     # --- 🔔 NEW NEWS ALARM VIEWS ---
     get_news_alerts,
     mark_news_as_read,
-    # --- 🚀 NEW TARGETS UPDATE VIEW ---
+    # ---  NEW TARGETS UPDATE VIEW ---
     update_targets,
-    # --- 🚀 NEW PENDING ORDER TARGETS UPDATE VIEW ---
+    # ---  NEW PENDING ORDER TARGETS UPDATE VIEW ---
     update_order_targets
 )
 
@@ -51,22 +51,22 @@ urlpatterns = [
     #  Option to cancel an order
     path('cancel-order/', cancel_order),
 
-    # --- 🤖 AI BOT ROUTES ---
+    # ---  AI BOT ROUTES ---
     path('bot-status/', get_bot_status),
     path('transfer-to-bot/', transfer_to_bot),
     path('toggle-bot/', toggle_bot),
     
-    # --- 🤖 ADVANCED BOT ROUTES ---
+    # ---  ADVANCED BOT ROUTES ---
     path('bot-withdraw/', withdraw_from_bot),
     path('update-bot-settings/', update_bot_settings),
 
-    # --- 🔔 AI NEWS ALARM ROUTES (Added Below) ---
+    # ---  AI NEWS ALARM ROUTES (Added Below) ---
     path('news-alerts/', get_news_alerts),
     path('mark-news-read/', mark_news_as_read),
 
-    # --- 🚀 NEW TARGETS UPDATE ROUTE (For Adjusting TP/SL) ---
+    # ---  NEW TARGETS UPDATE ROUTE (For Adjusting TP/SL) ---
     path('update-targets/', update_targets),
 
-    # --- 🚀 NEW PENDING ORDER TARGETS UPDATE ROUTE ---
+    # ---  NEW PENDING ORDER TARGETS UPDATE ROUTE ---
     path('update-order-targets/', update_order_targets),
 ]
